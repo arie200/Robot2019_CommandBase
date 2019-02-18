@@ -5,18 +5,37 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
+//On error, create env.h from env-default.h and modify ROBOT_VERSION_STRING
+#include "env.h"
+
 #include "Robot.h"
 #include <frc/commands/Scheduler.h>
 #include <frc/smartdashboard/SmartDashboard.h>
+#include <frc/shuffleboard/Shuffleboard.h>
 
 ExampleSubsystem Robot::m_subsystem;
-OI Robot::m_oi;
+//OI Robot::m_oi;
 
 void Robot::RobotInit() {
+  // Instantiate all subsystems objects 
+  CommandBase::init();
+
+  cs::UsbCamera camera1 = CameraServer::GetInstance()->StartAutomaticCapture(1);
+  cs::UsbCamera camera0 = CameraServer::GetInstance()->StartAutomaticCapture(0);
+	camera1.SetResolution(640, 480);
+  camera0.SetResolution(640, 480);
+  //camera1.SetExposureHoldCurrent();
+  camera1.SetBrightness(50);
+  camera1.SetExposureManual(35);
+  camera0.SetExposureManual(35);
+
   m_chooser.SetDefaultOption("Default Auto", &m_defaultAuto);
   m_chooser.AddOption("My Auto", &m_myAuto);
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
+  frc::SmartDashboard::PutString("Code Version", ROBOT_VERSION_STRING);
 
+  frc::SmartDashboard::PutNumber("Left Hinge", CommandBase::gamePieceManipulator->GetLPosition());
+  frc::SmartDashboard::PutNumber("Right Hinge", CommandBase::gamePieceManipulator->GetRPosition());
 }
 
 /**
@@ -27,7 +46,9 @@ void Robot::RobotInit() {
  * <p> This runs after the mode specific periodic functions, but before
  * LiveWindow and SmartDashboard integrated updating.
  */
-void Robot::RobotPeriodic() {}
+void Robot::RobotPeriodic() {
+
+}
 
 /**
  * This function is called once each time the robot enters Disabled mode. You
@@ -76,6 +97,15 @@ void Robot::TeleopInit() {
     m_autonomousCommand->Cancel();
     m_autonomousCommand = nullptr;
   }
+  // To use Field-Centric steering (Saucer Mode), pass a TRUE to the command.
+  // FALSE will use Robot-Centric (relative) steering
+  // This value should come from the sendable chooser/dashboard
+  m_teleopCommand = new MecanumDriveCommand(false);
+  m_teleopCommand->Start();
+  m_gamePieceCommand = new GamePieceManipulatorManual();
+  m_gamePieceCommand->Start();
+  m_habClimbCommand = new HABLift();
+  m_habClimbCommand->Start();
 }
 
 void Robot::TeleopPeriodic() { frc::Scheduler::GetInstance()->Run(); }
